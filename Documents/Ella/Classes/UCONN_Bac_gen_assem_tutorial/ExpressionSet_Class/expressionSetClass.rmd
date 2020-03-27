@@ -1,0 +1,177 @@
+---
+title: "Expression Set Class Adapted from Falcon, Morgan and Gentleman 2007"
+author: Ella Deyett
+date: March 27, 2020
+output: 	
+	html_document:
+		toc: true
+		toc_depth:2 
+		toc_float: 
+		  collapsed:false
+		  smooth_scroll:false
+		highlight: tango
+---
+
+#Introdcution
+	ExpressionSet consists of and coordinates between many different components including:
+		assayData: hint at the methods used to access different data components 
+		meta-data: describing samples in the experiment 
+		phenoData: annotations and metadata about the samples 
+		featureData/annotation: protocol used for processing each sample 
+		experimentData:
+		protocolData:
+
+# Preliminaries 
+##Install/Load packages
+```{r}
+BiocManager::install("Biobase")
+library("Biobase")
+packageVersion("Biobase")
+```
+
+##Building an ExpressionSet from .CEL and other files and from Scratch
+	CEL files crom from chip manufacturer hardward and R packages can read this data and make it into an expressionset 
+			Can be converted using: as(object, "ExpressionSet")
+
+###Assay Data
+	F(eatures)= Row
+	S(amples)=Columns
+	Usually this is in a tab delimited text files so can read in with read.table and then convert to a matrix
+```{r}
+dataDirectory<-system.file("extdata", package="Biobase")
+exprsFile<-file.path(dataDirectory, "exprsData.txt")
+exprs<-as.matrix(read.table(exprsFile, header=TRUE, sep="\t", row.names=1, as.is=TRUE))
+
+#Data assessment
+class(exprs)
+dim(exprs)
+colnames(exprs)
+head(exprs)
+
+mimimalSet<-ExpressionSet(assayData=exprs)
+```
+
+###Phenotypic Data
+	Summarizes information about samples (condition, tissue, age, treatment etc)
+		S(amples)= rows
+		V(variables)=columns
+
+```{r}
+pDataFile<-file.path(dataDirectory, "pData.txt")
+pData <- read.table(pDataFile, row.names=1, header=TRUE, sep="\t")
+
+dim(pData)
+rownames(pData)
+#Should match colnames of assay data!
+summary(pData)
+
+
+#Test if they match 
+all(rownames(pData)==colnames(exprs))
+names(pData)
+sapply(pData, class)
+pData[c(15,20),]
+pData[pData$score>0.8,]
+
+#To better explain what the variables mean we can create a metadata table
+metadata<-data.frame(labelDescription=c("Patient Gender", "Case/Control status", 
+			"Tumor progress on XYZ scale"), row.names=c("gender", "type", "score"))
+head(metadata)
+
+
+#AnnotatedDataFrame class in biobase connects our phenotypic data for our metadata
+
+phenoData<-new("AnnotatedDataFrame", data=pData, varMetadata=metadata)
+
+phenoData
+head(pData(phenoData))
+
+phenoData[c("A","Z"), "gender"]
+
+pData(phenoData[phenoData$score>0.8,])
+
+```
+
+##Annotations and feature data
+	
+```{r}
+annotation<-"hgu95av2"
+
+#Create an object describing the experimental design as a MIAME object
+
+experimentData<-new("MIAME", 
+	name="Pierre Fermat", 
+	lab="Francis Galton Lab", 
+	contact="pfermat@lab.not.exist", 
+	title="Smoking-Cancer Experiment", 
+	abstract="An example ExpressionSet", 
+	url="www.lab.not.exist", 
+	other=list(notes="Created from text files"))
+
+
+```
+
+
+##Putting it all Together
+```{r}
+exampleSet<-ExpressionSet(assayData=exprs, 
+		phenoData=phenoData,
+		experimentData=experimentData,
+		annotation='hgu95av2')
+
+
+```
+
+#The basics of ExpressionSets
+```{r}
+#Summary of expression set
+exampleSet
+
+#Extracting data from expression set
+exampleSet$gender[1:5]
+exampleSet$gender[1:5]=="Female"
+
+
+#Retrieve Features names
+featureNames(exampleSet)[1:5]
+
+#Retrieve Sample Names
+sampleNames(exampleSet)[1:5]
+
+#Retrieve Var Labels
+varLabels(exampleSet)
+
+
+#Extract the expression matrix and the annotated data from 
+
+mat<-exprs(exampleSet)
+dim(mat)
+
+adf<-phenoData(exampleSet)
+adf
+
+
+```
+
+##Subsetting
+	So important and useful! You want a particular piece of data from the expression set but also want it to still be connnected to the phenotypic data! 
+
+	Keep everything together
+```{r}
+vv<-exampleSet[1:5, 1:3]
+dim(vv)
+featureNames(vv)
+sampleNames(vv)
+
+#What about subsetting to just the males
+males<-exampleSet[,exampleSet$gender=="Male"]
+males
+exampleSet
+
+```
+
+#All Good code ends with package info!
+```{r}
+sessionInfo()
+
+```
