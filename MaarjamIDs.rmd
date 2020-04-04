@@ -1,0 +1,125 @@
+
+#You must register with Maarjam to use the database!
+This can take several weeks to get approved so do so early on! 
+[MAARJAM website] (https://maarjam.botany.ut.ee/)
+
+##Steps to procure database for AMF taxonomy identification
+	1.) log in to MaarJAM
+`	2.) Go to search --> by fungal taxon
+	3.) Type in "Glomeromycetes" in Fungal class window
+		a.) Matches found will be displayd by ID scroll down
+	3.) In the select marker window select 18S (or the marker used)
+	4.) Select 'Possible exports' --> 'check all on page'--> 'Export all sequences in set (long form) 
+	5.) Download my take several minutes
+	6.) Using Conda make an environement for the analysis and install the blast package
+		conda install -y -c bioconda blast
+	7.) Creat the blast database
+		 makeblastdb -dbtype nucl -in Documents/maarjam_18s_glomeromycetes_4.1.2020.fasta
+
+
+Building a new DB, current time: 04/01/2020 13:23:55
+New DB name:   /home/ella/Documents/maarjam_18s_glomeromycetes_4.1.2020.fasta
+New DB title:  Documents/maarjam_18s_glomeromycetes_4.1.2020.txt
+Sequence type: Nucleotide
+Keep MBits: T
+Maximum file size: 1000000000B
+
+
+##Run Blast to get Virtual taxas using the database that was just set up 
+	-query Your seqs
+	-db the database you created above 
+	-evalue should be stringent so you don't over cluster
+	-outfmt the format to output the file 
+	-max_target_seqs number of seqs to keep 
+	-num_threads more threads = faster results 
+	-out the output file 
+blastn -query ~/Documents/Ella/Celia/AMF_florida/funseqs.fasta -db Documents/maarjam_18s_glomeromycetes_4.1.2020.fasta -evalue 1e-50 -outfmt 6 -max_target_seqs 10 -num_threads 4 -out blastn_maarjamDBVT4.1.2020
+
+
+##Format Blast table for integration with phyloseq
+```{r}
+#Set working directory
+getwd()
+list.files('results/')
+blast_tab<-read.table("results/blastn_maarjamDBVT4.1.2020", sep= '\t', header=F, stringsAsFactors=F)
+head(blast_tab)
+length(unique(blast_tab[,1]))
+
+#The Seqs split into two columns seq_name aligns to the names in blast output and sequences align with phyloseq integration
+library("Biostrings")
+seqs<-readDNAStringSet("funseqs.fasta")
+seq_name<-names(seqs)
+sequences<-paste(seqs)
+
+seq_DF<-data.frame(seq_name, sequences)
+dim(seq_DF)
+
+
+```
+
+#Best Blast
+	blast database was created to have 10 entries recorded for each sequence. Best annotated hit should be recored as virtual taxa per each ASV. 
+
+```{r} 
+
+
+seq_DF$VT <- paste0("Pleasebegone", 1:nrow(seq_DF))
+dim(seq_DF)
+
+for(i in 1:nrow(seq_DF))
+	{ 
+		seqnum<-0
+	#Make a little dataframe per each sequence 
+		seqnum<-blast_tab[blast_tab[,1]==seq_DF[i,1],]
+
+	#Reorder the little dataframe based on Evalue the lower the Evalue the higher confidence in classification we have. Expect no more then 10/sequence but could have only one
+	if (length(seqnum)>1) {
+		seqnum.ord<-seqnum[order(seqnum[,11]),]
+
+	#Keep the best annotated "VT" seq
+		seqnum.ord.VT<-seqnum.ord[regexpr("VTX", seqnum[,2])>0,]
+
+	#Keep the best hit
+		split=strsplit(seqnum.ord.VT[1,2], "_")[[1]]
+		seq_DF[i,3]=split[length(split)]
+}
+}
+i=1
+		seqnum<-blast_tab[blast_tab[,1]==seq_DF[i,1],]
+seqnum
+
+
+		seqnum.ord<-seqnum[order(seqnum[,11]),]
+seqnum.ord
+
+		seqnum.ord.VT<-seqnum.ord[regexpr("VTX", seqnum[,2])>0,]
+
+	#Keep the best hit
+		split=strsplit(seqnum.ord.VT[1,2], "_")[[1]]
+		seq_DF[i,3]=split[length(split)]
+ head(seq_DF)
+
+#Save file
+
+write.csv(seq_DF, "results/blastn_VTassignments4.1.2020.csv")
+
+```
+
+
+#Blast output
+```{r}
+
+blast.out<-read.csv('results/AMF_fungal_blastout.csv')
+head(blast.out)
+
+
+```
+
+
+
+```{r}
+sessionInfo()
+
+
+```
+
