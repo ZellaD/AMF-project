@@ -7,4 +7,4 @@ Primer design and taxonomy assignment to virtual taxa was derived from the Maarj
 Lekberg, Y. et al. More bang for the buck? Can arbuscular mycorrhizal fungal communities be characterized adequately alongside other fungi using general fungal primers? New Phytol. 220, 971–976 (2018)
 
 
-Analysis conducted by Zella Deyett and mostly consists of Rcode
+Analysis conducted by Elizabeth Deyett and mostly consists of Rcode.
