@@ -1,0 +1,1897 @@
+---
+title: "Data Analysis on Arbuscular mycorrhizal fungal composition across US citrus orchards, management strategies, and disease severity spectrum"
+author: "Elizabeth A. Deyett"
+output:
+  html_document:
+    keep_md: true
+    toc: true
+    toc_depth: 2
+    toc_float: true
+date: "January 31, 2022"
+
+---
+
+
+Here is the data analysis that accompanies the published paper 'Arbuscular mycorrhizal fungal composition across US citrus orchards, management strategies, and disease severity spectrum'
+This includes a number of initial analysis as well as the published graphs in the manuscript. It discusses where the data came from and why certain decisions were made with the data as well as how to create these graphs on your own data set.
+
+
+You can find the published manuscript here:
+
+Remember that is workflow is unique for Arbuscular mycorrhizal fungi. It does not serve as as any sort of authority but simply is a resource describing the data and the analysis that went into this specific example of amplicon metagenomics. If using this as a resource for your own data, Great! Always remember your data is just like you, unique and requires special love and care. If you fit your data directly into this pipeline your data will be said you don't love it. So love your data, adapt this workflow and make something even more beautiful!
+
+
+
+#Intro
+Arbuscular mycorrhizal fungi (AMF) are biotrophic organisms forming symbiotic associations with more than 70% of the land plants across a broad range of terrestrial ecosystems (Brundrett and Tedersoo, 2018; Smith and Read 2008). The rhizosphere microbial diversity is a biomarker of soil fertility and plays a central role in sustainable agricultural systems (Hartmann et al., 2015; Mäder et al., 2002).Mycorrhizal fungi are major participants of the rhizosphere microbiome and are under the constraints of farming practices with research indicating that mycorrhizal fungi are more diverse under organic farming practices (Oehl et al., 2010; Verbruggen et al., 2010). Understanding the factors that shape AMF communities could improve management tools and recommendations for implementing of more sustainable agricultural practices.
+
+In HLB-impacted orchards, the tree rhizosphere suffers from microbial dysbiosis and root collapse, thereby weakening the host and its defense response against attack from other pathogens (Fan et al., 2013; Ginnan et al., 2020). Specifically, a study from Florida found that high relative abundance of Glomeromycota correlated with healthier trees (Ginnan et al., 2020), although the ITS2 amplicon used in the study is limited in its ability to detect AMF taxonomy and may have omitted key taxa (Lekberg et al 2018). AMF have been established to provide protection against citrus root diseases (Tian et al., 2021; Watanarojanaporn et al., 2011), and developing practices that support their biodiversity can offer new ground for management strategies.
+
+This study aimed to profile AMF community composition and structure in citrus agroecosystems from two distinct climatic zones within the continental US. We captured citrus root-associated AMF diversity by employing AMF specific amplicon sequencing primers (Lee et al., 2008; Dumbrell et al., 2011) and applied it to citrus groves to better identify taxa and capture the biodiversity associated with citrus roots.
+
+This study provides insightful information about AMF dynamics within a major perennial agroecosystem and identifies putative generalist and specialist taxa that could be exploited for agricultural purposes.  
+
+
+##Understanding The Data
+In this dataset we are interested in 3 distinct questions
+	1. How does AMF composition change across citrus orchards
+	   	+ Florida
+		+ California
+	2. How does AMF composition change across managment strategies
+	   	+ Organic
+		+ Conventional
+	3. How does AMF composition change across disease (HLB) severity spectrum
+	   	+ Mild
+		+ Moderate
+		+ Severe
+###Breaking Down the Data Further
+Variable 	| 	Variable Type 		| Variable Levels 		| N
+--------------- | ----------------------------- | ----------------------------- | ----
+Geographical  	| 	Categorical		| Florida, California 		| 34/36
+Management 	|	Categorical		| Organic, Conventional 	| 15/21
+Disease Rating  | 	Ordered Categorical 	| Mile, Moderate, Severe 	| 12/10/11
+
+
+
+##Materials and Methods To This Point
+###The Following is a bried overview of the Analysis done up until this point.
+####Please see manuscript for a full assessment
+ * Sample type: roots harvested in 2017 and freeze-dried
+ * DNA extraction: DNA was isolated using the MagMAX-96 DNA Multi-Sample Kit (Thermo Fisher Scientific) with the protocol “4413021ForPlants”
+ * PCR Amplification: Using the AML2 and the universal eukaryotes WANDA primer sets
+ * Bioinformatics:
+   + Qulity Filtering with Trimmomatic (SLIDINGWINDOW:5:20)
+   + [DADA2] (https://benjjneb.github.io/dada2/index.html) (version 1.14.1) - used to produce Amplicon Sequence Varients (ASVs)
+     	+ Read more about ASVs [here] (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4927377/) if you are interested
+	+ It's a beautifal package that you can find [here] (https://benjjneb.github.io/dada2/index.html)
+	+ That has an incredible tutorial for all levels found [here] (https://benjjneb.github.io/dada2/tutorial.html)
+	+ For this specific analysis, DADA2 was run as stated in the tutorial to further filter reads to the highest quality:
+		+ No more then 1 "N" call
+		+ phiX removal
+		+ short reads removal
+		+ No more than 2 expected Errors
+
+###Taxaonomy Assignment
+AMF are very special class of fungi that are not easily identifiable using the "universal" databases like UNITE. Instead we used a 2 factor authentificaiton method to assign taxonomy to our sequences.
+1. [MaarjAM] (https://maarjam.botany.ut.ee/) database
+   + Pros: assigns a virtual taxa which can be used to compare between research projects
+   + Cons: does not supply phylogenetic heirarchy biologists are used to to compare between research projects (i.e. Genus, Family, Class, Order, Phylum)
+   + Parameters used in this analysis: Taxonomy was assigned using BLASTN and the MaarjAM database (Öpik et al. 2010; downloaded on April 1, 2020) using a cut-off e-value of 1e-50 and assigning so-called virtual taxa (VT) based on lowest e-value and best-annotated sample.
+
+2. Phylogenetic Tree (first saw this method in [Stefani *et al.* 2020 paper] (https://pubmed.ncbi.nlm.nih.gov/32180012/))
+   + Pros: Can assign your sequences to Genus (sometimes species) level
+   + Cons: You limited to the taxa in the phylogenetic tree.
+   + Parameters used in this analysis: A maximum likelihood tree was constructed with 1000 bootstraps using RAxML v8.2.12 (Stamatakis, 2014) implemented on the CIPRES Gateway (Miller et al. 2010) and set to the GTRGAMMA evolutionary model. The tree was rooted using Paraglomus occultum as the outgroup as per Krüger et al. (2012).
+
+
+##Analysis Covered Here
+
+1. Data Manipulation
+2. Data Transformations
+3. Alpha Diversity
+4. Beta Diversity
+5. Taxonomy Bar plots
+6. Differential Abundance With Microbiome Datasets
+7. Classiv Venn Diagrams
+8. Upset Graphs (Venn Diagram Alternatives)
+9. Complex Heatmaps
+10. Machine Learning with Microbiome Datasets
+
+
+#Begin Analysis  
+The following are the libraries necessary to run this version of the analysis. Different versions of packages will likely work but may need some adjusting. There may also be easier ways to run this analysis using other packages. If you know of any let me know :D, I love finding new and *easier* ways to get stuff done!
+##Libraries To Load
+```{r}
+library("DESeq2")
+library(RColorBrewer)
+library("phyloseq")
+library("scales")
+library(ggpubr)
+library("VennDiagram")
+require(devtools)
+library("ComplexHeatmap")
+#install_version("vegan", version ="2.4-5", repos = "http://cran.us.r-project.org")
+library(vegan)
+library(igraph)
+library('dada2')
+library(tidyverse)
+library('microbiome')
+library('seqinr')
+library("RVAideMemoire")
+library(multcomp)
+library('viridis')
+require('ggrepel')
+library(ggforce)
+library('Polychrome')
+library('broom')
+library(UpSetR)
+library("ggsci")
+library(DECIPHER)
+library(ggprism)
+sessionInfo()
+```
+#Load DataSets
+
+```{r}
+#Load Sequence Tables
+
+#California
+cali<-readRDS("datafiles/AMF_Cali8.17.2020.results.seqtab.nochim.rds")
+flor<-readRDS("datafiles/AMF_florida_resultsFOnly_seqtab.nochim.rds")
+
+#Fix Rownames for Florida samples
+florrn<-sapply(strsplit(rownames(flor), ".fastq"), '[',1)
+florrn<-sapply(strsplit(florrn, "pair1_"), '[', 2)
+rownames(flor)<-florrn
+
+#Merge Sequence tables
+amf<-t(mergeSequenceTables(table1=cali, table2=flor))
+
+#Not Fungi Seqs Found Via Blast
+notfun<-c("CCAATAGCGTATACTAAAATTGTTGCGATTAAAAAGCTCGTAGTTGGATCTGCGATACAGGATAGCGGTCCCCCGAAAGGGTGGTTACTGTGTTTCCTGATCGAAAAATCTGGTCGTCCCTAGATGCTCTTTACTGAGTGTCTAGGGTGACTAGAAAATTTACTTTGAAAAAATTAGAGTGTTCAAAGCAGGCGTAAGCCTAAATAGTGGTGCATGGAAT", "CTAATAGCGTATACTAAAGTTGTTGTGGTTAAAAAGCTCGTAGTTGGATCTCAGTTCGAGTCAGTCGGTCCACTTGCCAGTGGCTACTGACTGGCTGAACACTTTACCGAGTTGTCCTACAGTGCTCTTAATCGAGTGTTGTAGGCGATCGGTACGTTTACTTTGAAAAAATTAGAGTGCTCAAAGCAGGCTAATAAAGCCCGAATAATGTTGCATGGAA", "CCAATAGCGTATATTAAAGTTGCTGCAGTTAAAAAGCTCGTAGTTGGATTTCTGGTTTGACGCACCTGGTCCGCCTCGGTTACGAGTGTGAGTGCTGGCGCGCGTCTGCCATCCTGCTAGAAAACGGCTGCACCCTTCACTGGGCTGCAGTCGCGATCTAGCTCTATTACTTTGAAAAAATTAGAGTGTTTAAAGCAGGCTTATGCATTGAATACATTAG", "CCAATAGCGTATATTAAAGTTGTTGCGGTTAAAAAGCTCGTAGTTGGATCTGCGGCCGAGGAAGGCGGTCCCCCGTTGGGCGGTTACTGCTTTTCCTGGCCTAACTCTCTGGTTTTCCTTTGGTGCTCTTCATTGAGTGCCACTGGTGGCCAGAACGTTTACTTTGAAAAAATTAGAGTGCTCAAAGCAGGCGATCTGCCTGAATAGTGGTGCATGGAAT", "CCAATAGCGTATATTAAAGTTGTTGCAGTTAAAAAGCTCGTAGTCTGAATCTTGGTCGGTGTTGAGCGTCCGTGGCTTCGGTCACGTGCACGCGATATACATCGGCCATATCCTTCGGAGGAACGTAGGTGCTTTTCATTAAGTGCTTGCGGGATTCCGATAGTTTACTTTGAGAAAAATAGAGTGTTCAAAGCAGGCGTTTTTGCCTTGAATACATTAG", "CCAATAGCGTATATTAAAGTTGTTGCGGTTAAAAAGCTCGTAGTTGGATCTCAGTTCGTGCCTGTCGGTCCGTCTCTGAAAGGCGGCCACTGACAGTTGCCGGACAGCTTATCGATTAGTGTTTCCCGAGAGGGGACACTCGTAAGGTCCCATGGTGCTCTTCACCGGGTGTCATGGGCGATCGATACGTTTACTTTGAAAAAATTAGAGTGCTCAAAGC", "CCAATAGCGTATATTAAAGTTGTTGCGGTTAAAAAGCTCGTAGTTGGATCTGCGGCCGAGGAGGGCGGTCCCCCGTTGGGTGGCTACTGCCTTTCCTGGCCTAACTCTCTGGTTTTCCTCTGGTGCTCTTGACTGAGTGCCTCTGGTGGCCAGAACGTTTACTTTGAAAAAATTAGAGTGCTCAAAGCAGGCATACTGCCTGAATAGTGGTGCATGGAAT")
+amf<- amf%>%subset(!(rownames(amf)%in%notfun))
+
+
+#saveRDS(amf, "amf_mergetables8.18.2020.rds")
+
+#Write Fasta And ID as Fungi
+seqs<-DNAStringSet(getSequences(rownames(amf)))
+seqs
+dim(amf)
+length(seqs)
+
+```
+#Add Virtual Taxa from Maarjam
+```{r}
+Vts<-read.csv("blastn_VTassignments_565ASV_8.18.2020.csv")
+dim(Vts)
+sort(unique(Vts$VT))
+rownames(Vts)<-Vts[,3]
+ Vts[, "VT"]<-as.character(Vts$VT)
+ sum(is.na(Vts$VT))
+
+ #Add Kruger Tree Genus Call
+ codnames<-read.csv("CodeNamesFromTree.11.08.2021.csv")
+ codnames<-codnames[codnames$CodeName!="NS",c("VT", "CodeName")]
+ colnames(codnames)
+ codnames<-codnames%>%subset(VT!="Unknown")
+setdiff(codnames$VT, Vts$VT)
+ length(is.na(codnames))
+ #Combine Codename and Vts
+ tax2<-full_join(Vts, codnames)
+	head(tax2)
+ tail(tax2)
+ rownames(tax2)<-tax2$sequences
+ tax2<-tax2[,c("VT", "CodeName")]
+ tax2<-as.matrix(tax2)
+
+ ```
+ #Convert to Phyloseq Object
+ ```{r}
+ #Make sure sample names and tax sequences are aligning between all pieces
+ map<-read.csv("AMF_masta_map.csv", stringsAsFactors=T)
+ map$DiseaseRating<-factor(round(as.numeric(as.character(map$DiseaseRating))-.1,0), ordered=TRUE)
+ map$group<-factor(paste0(map$State, "_", map$managment, "_", map$DiseaseRating))
+ rownames(map)<-map$Sample.ID.
+summary(map)
+ #Make sure there is no difference between the respected rownames and colnames of the mapping file, seqcounts, and taxtable
+
+ ps<-phyloseq(otu_table(amf, taxa_are_rows=TRUE),tax_table(tax2), sample_data(map))
+# 	saveRDS(ps,"phyloseq_raw_AMF_FULLVT.rds")
+sum(colSums(otu_table(ps)))
+ ps<-readRDS( "phyloseq_raw_AMF_FULLVT.rds")
+ ps
+#length(unique(tax_table(ps)[,"VT"]))
+ #Prune Out samples with less then 1000 reads
+ amf_ps<-subset_samples(ps, sample_sums(ps)>=1000)
+ sum(colSums(otu_table(amf_ps)))
+amf_ps
+ #Prune Samples we are Not Using In Analysis
+amf_ps<-subset_samples(amf_ps, UseScale!=3 & UseScale!=4)
+amf_ps
+#Writing Mapping File Out
+write.csv(data.frame(sample_data(amf_ps)),"MappingFileUsedInPaper_12.20.2021.csv")
+
+#Prune Rare Taxa are taxa that occur in less prevalent than .1% of minimal library size
+amf_ps<-core(amf_ps, detection=0, prevalence=.02)
+#	     min(sample_sums(amf_ps))*.001/nsamples(amf_ps))
+sum(colSums(otu_table(amf_ps)))
+.02*nsamples(amf_ps)
+amf_ps
+head(sort(sample_sums(amf_ps)))
+
+
+ #For Tree Taxa
+
+ 	tdb<-data.frame(tax_table(amf_ps))
+ 	sum(is.na(tdb$VT))
+ 	unique(tdb$VT)
+ 	tdb$VT<-ifelse(is.na(tdb$VT),"Unknown", tdb$VT)
+ 	tdb$VT<-ifelse(tdb$VT=="Unknown", make.unique(tdb$VT), tdb$VT)
+ 	sort(table(tdb$VT))
+ 	length(unique(tdb$VT))
+
+
+	tax_table(amf_ps)<-as.matrix(tdb)
+
+	amf3<-tax_glom(amf_ps, "VT")
+ 	write.csv(data.frame(sample_data(amf3)), "Samples_used_inAMF_Ms_10.11.2021.csv")
+
+	seqs_tre<-DNAStringSet(getSequences(rownames(tax_table(amf3))))
+ 	names(seqs_tre)<-tax_table(amf3)[,"VT"]
+	seqs_tre
+	library(ShortRead)
+	writeFasta(seqs_tre, "VTseqs_forTreeID_10.20.2021.fasta")
+	length(seqs_tre) 	
+
+	seqlen<-DNAStringSet(seqs_tre)
+	table(width(seqlen))
+	packageVersion("DESeq2")
+
+
+```
+
+ #Graph Setup
+ ```{r}
+
+ g<-"graphs_FINAL2021/"
+
+ themesizes<-theme(plot.title=element_text(hjust=0.4, size=16, face="bold"),
+                         axis.text.x=element_text(angle=45, hjust=1,vjust=1, size=12),
+                         axis.text.y=element_text(size=12))
+
+ cols<-c("grey50",brewer.pal(n=5, "YlOrRd"), brewer.pal(n=3, "BrBG")[c(1,3)], brewer.pal(n=3, "PuRd")[c(1,3)] ,
+ 		viridis_pal()(6))
+
+ set.seed(32)
+ tax_col<-createPalette(63, "#5ab4ac")
+ taxnames<-names(rev(sort(table(tax_table(amf_ps)[,"VT"]))))
+ names(tax_col)<-taxnames
+tax_col
+```
+#Recatergorize Disease Rating to Mild, Moderate, Severe
+```{r}
+map<-data.frame(sample_data(amf_ps))
+
+table(map$DiseaseRating)
+map$DR3<-as.factor(ifelse(map$DiseaseRating==4 | map$DiseaseRating==5, "Severe",
+		ifelse(map$DiseaseRating==3, "Moderate", "Mild")))
+table(map$DiseaseRating, map$DR3)
+sample_data(amf_ps)<-map
+```
+
+
+
+ #Sample Exploration
+ ```{r}
+amf_ps
+summary(sample_data(amf_ps))
+#Histogram for reads/sample
+ readsper<-data.frame(ASVs=colSums(otu_table(amf_ps)>0),
+		      reads=sample_sums(amf_ps), sample_data(amf_ps))
+ sum(readsper$reads)
+ amf_psVT<-tax_glom(amf_ps, "VT")
+ amf_psVT
+ VTprev<-data.frame(VTPrev=rowSums(otu_table(amf_psVT)>0),
+ 		    reads_abund=taxa_sums(amf_psVT),
+ 		    tax_table(amf_psVT)[,1])
+ taxcode<-data.frame(tax2)%>%group_by(VT, CodeName)%>%summarize(count=n())
+ VTprev<-left_join(VTprev, taxcode)
+ dim(VTprev)
+	taxcode
+ rownames(VTprev)<-1:nrow(VTprev)
+ head(VTprev%>%arrange(VTPrev), n = 15)
+ head(VTprev%>%arrange(desc(VTPrev)))
+ head(VTprev%>%arrange(desc(reads_abund)))
+ head(VTprev%>%arrange(desc(count)), n=8)
+VTprev
+sum(VTprev$reads_abund)
+packageVersion("ComplexHeatmap")
+readsper%>%group_by(State, managment, DiseaseRating)%>%
+ 		summarize(n(), ASVmeans=mean(ASVs),
+ 			  ASVmin=min(ASVs),
+ 			  ASVmax=max(ASVs))
+
+
+
+ ggplot(readsper, aes(x=reads))+geom_histogram(bins=50, color='black', fill='grey')+theme_bw()+
+ 	geom_vline(xintercept=1000, color='red', linetype='dashed')+
+ 	labs(title="Histogram: Reads per Sample")+xlab("Read Count")+ylab("Sample Count")
+
+ #Scatter plot of ASVs vs. Reads
+ ggplot(readsper, aes(x=State, y=reads, color=DiseaseRating))+
+ 	geom_boxplot(aes(color=managment))+
+ 		     geom_jitter(width=.2, height=0, size=3)+
+ 		     theme_classic()+
+		     scale_color_manual(values=cols)
+```
+ #Split into individul datasets
+
+```{r}
+
+ #Seperate For States
+ states<-subset_samples(amf_ps, UseScale==1)
+ statesVT<-subset_samples(amf_psVT, UseScale==1)
+
+
+ #Seperate Based on Florida For Disease Rating
+ DR<-subset_samples(amf_ps, State=="Florida"& UseScale==2)
+ DRVT<-subset_samples(amf_psVT, State=="Florida"& UseScale==2)
+DR
+
+
+ #Seperate Based on California For
+ mang<-subset_samples(amf_ps, State=="California")
+ mangVT<-subset_samples(amf_psVT, State=="California")
+
+ #Remove 0 counts
+ statesVT<-subset_taxa(statesVT, taxa_sums(statesVT)>0)
+ DRVT<-subset_taxa(DRVT, taxa_sums(DRVT)>0)
+ mangVT<-subset_taxa(mangVT, taxa_sums(mangVT)>0)
+
+ states<-subset_taxa(states, taxa_sums(states)>0)
+ DR<-subset_taxa(DR, taxa_sums(DR)>0)
+ mang<-subset_taxa(mang, taxa_sums(mang)>0)
+
+ amf_ps
+ states
+ DR
+ mang
+
+
+sum(colSums(otu_table(amf_psVT)))
+sum(colSums(otu_table(statesVT)))
+sum(colSums(otu_table(DRVT)))
+sum(colSums(otu_table(mangVT)))
+
+
+
+
+
+```
+
+ #Variance Stabilizing Transformation
+ ```{r}
+
+ #Create three Based on the three Data sets
+
+ #DESEQ
+ deseq2fun<-function(diagdds){
+
+ 		diagdds = estimateSizeFactors(diagdds, type='poscounts')
+ 		locadds<-estimateDispersions(diagdds, fitType="parametric")
+
+ 		#VST Transformation
+ 		vst_counts<-varianceStabilizingTransformation(diagdds, fitType="parametric")
+
+ 		#Transforms datat to have approximately constant varience along the rang of mean values
+ 		#Transformation also normalizes with respect to library size
+ 		vst_tab<<-assay(vst_counts)
+ #poscounts estimator deals with a gene with some zeros, by calculating a modified geometric mean by taking the n-th root of the product of the non-zero counts
+ 	#This was developed specifically for Microbiome analysis.
+ #		ggarrange(plotDispEsts(diagdds, main="Parametric"),
+ 		plotDispEsts(locadds, main="Local")
+ 		diagdds = DESeq(diagdds, fitType="parametric", test="Wald")
+ 		keeptit<<-diagdds
+ 	}
+
+ #Phyloseq 2 Deseq
+ sta_counts<-phyloseq_to_deseq2(statesVT, ~State)
+ dis_counts<-phyloseq_to_deseq2(DRVT, ~DR3)
+ man_counts<-phyloseq_to_deseq2(mangVT, ~managment)
+
+ #Deseq Function
+ #States
+ deseq2fun(sta_counts)
+ sta_vst<-vst_tab
+ sta_vst<-phyloseq(otu_table(sta_vst, taxa_are_rows=TRUE),
+ 	sample_data(statesVT), tax_table(statesVT))
+ sta_dds<-data.frame(results(keeptit,
+ 			    name=resultsNames(keeptit)[2]))
+ sta_names<-sta_dds%>%subset(padj<0.01)
+ taxdf<-data.frame(tax_table(amf_ps))
+ sta_names2<-merge(sta_names, taxdf, by=0)
+sta_names2
+sta_dds_tax<-taxdf%>%subset(rownames(taxdf)%in%rownames(sta_names))
+dim(sta_names2)
+
+
+#Management
+deseq2fun(man_counts)
+ man_vst<-vst_tab
+ man_vst<-phyloseq(otu_table(man_vst, taxa_are_rows=TRUE),
+ 	sample_data(mangVT), tax_table(mangVT))
+
+ man_dds<-data.frame(results(keeptit,
+ 			    name=resultsNames(keeptit)[2]))
+resultsNames(keeptit)
+ man_names<-man_dds%>%subset(padj<0.01)
+head(man_names)
+
+ man_names2<-merge(man_names, taxdf, by=0)
+man_names2
+
+ man_dds_tax<-taxdf%>%subset(rownames(taxdf)%in%rownames(man_names))
+ dim(man_dds_tax)
+resultsNames(keeptit)[2]
+
+#DiseaseRating
+ deseq2fun(dis_counts)
+ dis_vst<-vst_tab
+ dis_vst<-phyloseq(otu_table(dis_vst, taxa_are_rows=TRUE),
+ 	sample_data(DRVT), tax_table(DRVT))
+
+
+ dis_dds<-phyloseq_to_deseq2(DRVT, ~0+DR3)
+ 		dis_dds = estimateSizeFactors(dis_dds, type='poscounts')
+ 		dis_dds<-estimateDispersions(dis_dds, fitType="parametric")
+ dis_dds<-DESeq(dis_dds, fitType="parametric", test="Wald")
+	resultsNames(dis_dds)
+
+ #Mild Vs. Moderate
+ MildvMod<-results(dis_dds,contrast=c("DR3", "Mild", "Moderate"))%>%subset(padj<0.01)
+ dim(MildvMod)
+
+ #Mild Vs. Severe
+ HvS<- results(dis_dds,contrast=c("DR3", "Mild", "Severe"))%>%subset(padj<0.01)
+	dim(HvS)
+
+merge(data.frame(HvS), taxdf, by=0)
+
+	#Moderate Vs. Severe
+MvS<- results(dis_dds, contrast=c("DR3", "Severe", "Moderate"))%>%subset(padj<0.01)
+dim(MvS)
+merge(data.frame(MvS), taxdf, by=0)
+
+ #Clean UP a little bit
+ HvS$lab<-"MildvSevere"
+ HvS$seqs<-rownames(HvS)
+ MvS$lab<-"ModvSevere"
+ MvS$seqs<-rownames(MvS)
+
+dis_names<-c(HvS$seqs, MvS$seqs)
+dis_dds_tax<-taxdf%>%subset(rownames(taxdf)%in%dis_names)
+
+dis_dds_tax<-dis_dds_tax%>%subset(!CodeName%in%rm_codenames)
+dis_dds_tax$CodeName
+
+
+ man_vst
+ sta_vst
+ dis_vst
+ ```
+
+
+ #Alpha Diveristy : Observed Number Of ASVs
+ ```{r}
+ #Alpha Diversity main concerns (Between States, Between DR, Between ManagementStrat+Glom level)
+
+ #Alpha Diversity Observed  + GLM Poisson Tukey Stats
+
+ #States
+
+
+ df_p_val<-data.frame(
+		      group1="California",
+		      group2="Florida",
+		      label= "n.s.",
+		      y.position=35)
+ state_a<-plot_richness(states, x="State", measures=c("Observed"))+
+	 geom_point(size=1, position='jitter', alpha=.3)+
+	 geom_boxplot(aes(fill=State), alpha=.7)+labs(x="")+
+ 	theme_classic()+ggtitle('')+ylim(0,43)+
+ 	themesizes+
+ 	scale_fill_manual(values=cols[c(7,8)])+
+ 	theme(legend.position='none',
+	       	 strip.background = element_blank(),
+		 strip.text.x = element_blank())+
+	labs(x="\n Geographical \n Location", y="Observed Richness")+
+	add_pvalue(df_p_val, label.size=4)+
+		scale_x_discrete(labels=c("California"="      California",
+					  "Florida"="      Floriida"))
+
+ggarrange(state_a, mg_a)
+ state_a$layers<-state_a$layers[-1]
+
+ 	#Statistics Using Poisson GLM
+ set.seed(42)
+
+
+ 	dat<-states
+ 	obs<-estimate_richness(dat, measures="Observed")
+ 	map<-data.frame(sample_data(dat))
+ 	obs<<-cbind(map, obs)
+
+
+ 	#GLM
+ 	resA_stat<-glm(Observed~State, family=poisson, data=obs)
+ 	#TUKEY
+ 	resA_stat_sum<-summary(glht(resA_stat, linfct=mcp(State="Tukey")))
+ 	#Results
+ 	print(resA_stat_sum)
+
+
+
+ #Alpha Diversity Graphs for Disease Rating
+   drmap<-data.frame(sample_data(DR))
+
+ df_p_val<-data.frame(
+		      group1=c(rep("Mild",2),"Moderate"),
+		      group2=c("Moderate", "Severe", "Severe"),
+		      label= c("n.s.", "***", "***"),
+		      y.position=c(38, 41, 35))
+df_p_val
+ DR_a<-plot_richness(DR, x="DR3", measures=c("Observed"))+
+	geom_point(size=1, position='jitter', alpha=.3)+
+	 geom_boxplot(aes(fill=DR3), alpha=.7)+ylim(0,43)+
+ 	theme_classic()+ggtitle('')+themesizes+
+	theme(legend.position='none',
+
+	 	 strip.background = element_blank(),
+		 strip.text.x = element_blank())+
+ 	scale_fill_manual(values=cols[c(2,4,5)])+
+ 	labs(x="\n HLB Disease\n Rating", y="")+
+	add_pvalue(df_p_val, label.size=4)+
+	scale_x_discrete(labels=c("Mild"="            Mild",
+				  "Moderate"="      Moderate",
+				  "Severe"="     Severe"))
+ggarrange(DR_a, mg_a)
+
+
+ DR_a$layers<-DR_a$layers[-1]
+
+ summary(sample_data(DR))
+ 	#Statistics Using Poisson GLM
+
+ set.seed(242)
+ 	dat<-DR
+ 	obs<-estimate_richness(dat, measures="Observed")
+ 	map<-data.frame(sample_data(dat))
+ 	obs<-cbind(map, obs)
+ 	#GLM
+ 	resA_stat<-glm(Observed~DR3, family=poisson, data=obs)
+ 	#TUKEY
+ 	resA_stat_sum<-summary(glht(resA_stat, linfct=mcp(DR3="Tukey")))
+ 	#Results
+ 	print(resA_stat_sum)
+
+ #Alpha Diversity Graphs for Management
+
+ df_p_val<-data.frame(
+		      group1="Conventional",
+		      group2="Organic",
+		      label= "***",
+		      y.position=35)
+
+
+	mg_a<-plot_richness(mang, x="managment", measures=c("Observed"))+
+	 geom_point(size=1, position='jitter', alpha=.3)+
+	 geom_boxplot(aes(fill=managment), alpha=.7)+ylim(0,43)+
+ 	theme_classic()+ggtitle('')+themesizes+
+ 	scale_fill_manual(values=cols[c(9,10)])+
+ 	theme(legend.position='none',
+	 	 strip.background = element_blank(),
+		 strip.text.x = element_blank())+
+	labs(x="\n Management \n Strategies", y="")+
+	add_pvalue(df_p_val, label.size=4)
+
+
+
+ mg_a$layers<-mg_a$layers[-1]
+
+
+  	dat<-mang
+ 	obs<-estimate_richness(dat, measures="Observed")
+ 	map<-data.frame(sample_data(dat))
+ 	obs<-cbind(map, obs)
+
+ 	#Statistics Using Poisson GLM
+ resA_stat<-glm(Observed~managment+Location, family=poisson, data=obs)
+         #TUKEY  
+         resA_stat_sum<-summary(glht(resA_stat, linfct=mcp(managment="Tukey")))
+         #Results
+         print(resA_stat_sum)
+
+
+ 	#Create Three Panel Graph
+ ggarrange(state_a,mg_a,DR_a, ncol=3,labels=c("A","B", "C"), font.label=list(size=16))
+
+
+ ggsave(paste0(g, "Fig2_alpha.tiff"), device='tiff', compression="lzw", dpi=600)
+ ggsave(paste0(g, "Fig2_alpha.png"), device='png')
+g
+ ```
+ ```{r}
+
+ #Classic Venn Diagrams for Pairs (States and Management) At Taxa level
+
+ summary(taxa_sums(mangVT))
+ summary(taxa_sums(statesVT))
+ summary(taxa_sums(DRVT))
+
+ ca<-subset_samples(statesVT, State=="California")
+ fl<-subset_samples(statesVT, State!="California")
+ cn<-subset_samples(mangVT, managment=="Conventional")
+ or<-subset_samples(mangVT, managment=="Organic")
+
+ subset_taxa(ca, taxa_sums(ca)>0)
+ subset_taxa(fl, taxa_sums(fl)>0)
+ subset_taxa(cn, taxa_sums(cn)>0)
+ subset_taxa(or, taxa_sums(or)>0)
+
+
+
+
+
+ #Remove taxa that aren't prevalence
+ #prevalent threshold
+
+ thres=.10
+ ntax=1
+ summary(taxa_sums(ca))
+
+ ca<-core(ca, detection=ntax,prevalence=thres)
+ fl<-core(fl, ntax, thres)
+ cn<-core(cn, ntax, thres)
+ or<-core(or, ntax, thres)
+ ca
+ fl
+ cn
+ or
+
+ #Dataframes for Easier manipulations at Taxa Level Will Also Do VT level
+
+ caV<-as.character(data.frame(tax_table(ca))$VT)
+ flV<-as.character(data.frame(tax_table(fl))$VT)
+
+
+ cnV<-as.character(data.frame(tax_table(cn))$VT)
+ orV<-as.character(data.frame(tax_table(or))$VT)
+
+
+ #Virtual Taxa
+ #Find Inersections
+ caVa<-length(unique(caV))
+ flVa<-length(unique(flV))
+ cnVa<-length(unique(cnV))
+ orVa<-length(unique(orV))
+
+ caflV<-intersect(caV, flV)
+setdiff(caV, flV)
+ #setdiff(orV, cnorV)
+ cnorV<-intersect(cnV, orV)
+
+ #Pairwise Venn for States
+ svV<-venn.diagram(list(California=caV, Florida=flV),
+         lty="blank",
+          fill=cols[c(7,8)], alpha=.75,
+         cex=1.4, cat.fontface=2,
+         cat.cex=0,
+       cat.just=list(c(4, .5), c(-4, .5)),
+ 	filename=NULL)
+ svV[[5]]$label<-paste(setdiff(caV,flV), collapse="\n")
+ svV[[6]]$label<-paste(setdiff(flV, caV), collapse="\n")
+ svV[[7]]$label<-paste(intersect(caV, flV), collapse="\n")
+
+ grid.newpage()
+#png(paste0(g, "VennDiaStateVT.png"))
+ grid.draw(svV)
+ dev.off()
+
+setdiff(cnV, orV)
+ setdiff(orV, cnV)
+
+
+ mvV<-venn.diagram(list(Conventional=cnV, Organic=orV),
+         lty="blank",
+          fill=cols[c(9,10)], alpha=.75,
+         cex=1.4, cat.fontface=2,
+         cat.cex=0,
+        cat.just=list(c(2, .5), c(-4, .5)),
+ 	filename=NULL)
+ mvV[[5]]$label<-paste(setdiff(orV,cnV), collapse="\n")
+ mvV[[6]]$label<-paste(setdiff(cnV, orV), collapse="\n")
+ mvV[[7]]$label<-paste(intersect(cnV, orV), collapse="\n")
+
+ grid.newpage()
+#png(paste0(g, "VennDiamangVT.png"))
+ grid.draw(mvV)
+ dev.off()
+
+
+ ```
+
+ #Classic Venn Diagrams for Disease Rating
+ ```{r}
+thres=.1
+ summary(taxa_sums(DRVT))
+summary(sample_data(DRVT))
+ H1<-subset_samples(DRVT, DR3=="Mild")
+M2<-subset_samples(DRVT, DR3=="Moderate")
+ S3<-subset_samples(DRVT, DR3=="Severe")
+
+ subset_taxa(H1, taxa_sums(H1)>0)
+ subset_taxa(M2, taxa_sums(M2)>0)
+ subset_taxa(S3, taxa_sums(S3)>0)
+
+ #Remove taxa that aren't prevalence
+ #prevalent threshold
+
+ H1<-core(H1, detection=ntax,prevalence=thres)
+ M2<-core(M2, ntax, thres)
+ S3<-core(S3, ntax, thres)
+H1
+M2
+S3
+ #Dataframes for Easier manipulations at Taxa Level Will Also Do VT level
+
+ H1V<-as.character(data.frame(tax_table(H1))$VT)
+ M2V<-as.character(data.frame(tax_table(M2))$VT)
+ S3V<-as.character(data.frame(tax_table(S3))$VT)
+
+
+vennDR<-data.frame(VT=unique(c(H1V, M2V, S3V)))
+	vennDR$H1=ifelse(vennDR$VT%in%H1V,1, 0)
+	vennDR$M2=ifelse(vennDR$VT%in%M2V,1, 0)
+	vennDR$M3=ifelse(vennDR$VT%in%S3V,1, 0)
+rownames(vennDR)<-vennDR$VT
+
+Heatmap(t(vennDR[,2:ncol(vennDR)]))
+
+ #Virtual Taxa
+
+ #Venn for Disease Rating
+
+svV<-venn.diagram(list(mild=H1V, Moderate=M2V, Severe=S3V),
+         lty="blank",
+          fill=cols[c(2, 4,5)], alpha=.75,
+         cex=1.4, cat.fontface=2,
+         cat.cex=0,
+ 	filename=NULL)
+
+# svV[[5]]$label<-paste(setdiff(H1V, c(M2V, S3V)), collapse="\n")
+# svV[[2]]$label<-paste(setdiff(cnV, orV), collapse="\n")
+# svV[[7]]$label<-paste(intersect(cnV, orV), collapse="\n")
+
+show_col(cols)
+
+grid.newpage()
+#png(paste0(g, "VennDiaDRVT.png"))
+ grid.draw(svV)
+#dev.off()
+
+ #Figure 3,4,5: HeatMaps
+ ```{r}
+ ra_cols<-colorRampPalette(c(cols[(11)],cols[16]), space='rgb')(10)
+ sta_cols<-colorRampPalette(c(cols[7], cols[8]), space='rgb')(3)
+ dis_cols<-viridis_pal(option="B")(10)
+
+
+ show_col(dis_cols)
+ show_col(sta_cols)
+
+ #Heat Map Prep
+
+ #Taxa Dat
+ VTprev<-data.frame(VTPrev=rowSums(otu_table(statesVT)>0),
+ 		    reads_abund=taxa_sums(statesVT),
+ 		    tax_table(statesVT)[,1])
+unk<-data.frame("VT"="Unknown", "CodeName"="Dk_Na")
+unk
+taxcode
+taxcode$CodeName[taxcode$VT=="VTX00301"]<-"Uk"
+taxcode<-full_join(taxcode, unk)
+tail(taxcode)
+VTprev<-full_join(VTprev, taxcode)
+VTprev$CodeName[32]
+VTprev$CodeName[32]<-"Dk_Na"
+
+ VtPrev2<-VTprev%>%subset(VTPrev>=3)
+ 	VtPrev2$gen<-sapply(strsplit(VtPrev2$CodeName, "_"), '[',1)
+	VtPrev2
+gencode<-VtPrev2[,c("gen")]
+ 	names(gencode)<-VtPrev2$VT
+ 	gencode
+ 	prevs<-VtPrev2$VTPrev
+ 	names(prevs)<-VtPrev2$VT
+ length(prevs)
+
+ 	#State Heat Map
+ 	sta_vst_counts<-psmelt(sta_vst)
+ 	matheat<-sta_vst_counts[,c("Sample","VT", "Abundance")]
+ 	matheat<-matheat%>%subset(VT %in%VtPrev2$VT)
+ 	matheat<-matheat%>%spread(VT, Abundance)
+ 	matheat<-matheat%>%group_by(Sample)%>%summarize_all(sum, na.rm=TRUE)
+ 	matheat<-data.frame(matheat)
+ 	dim(matheat)
+ 	rownames(matheat)<-matheat[,1]
+ 	matheat<-matheat[,2:ncol(matheat)]
+ 	sta_vst_counts<-matheat
+ range(taxa_sums(sta_vst))
+
+
+ 	#Deseq Sig
+  	pvalue_sta<-data.frame(colnames(sta_vst_counts)	)
+ 	pvalue_sta$p<-ifelse(colnames(sta_vst_counts)%in%sta_dds_tax$VT, " *", "")
+ 	pvalue<-as.character(pvalue_sta$p)
+ 	names(pvalue)<-pvalue_sta[,1]
+ 	pvalue
+ 	sta_dds_tax$CodeName
+ 	#Venn Diagrame with 10% prev and 10 raw Count
+ 	stateVenn<-data.frame(colnames(sta_vst_counts))
+ 	stateVenn$v<-ifelse(stateVenn[,1] %in%setdiff(caV, flV), "Ca",
+ 				   	ifelse(stateVenn[,1] %in%intersect(flV, caV), "Both",
+ 						  ifelse(stateVenn[,1] %in%setdiff(flV, caV),"Fl", "NO")))
+ 	sta_ven<-as.character(stateVenn$v)
+ 	names(sta_ven)<-stateVenn[,1]
+ 	sta_cols<-c(sta_cols, "grey50")
+ 	sta_cols
+ 	names(sta_cols)<- c("Ca", "Both", "Fl", "NO")
+ #Row Clustering
+ 	state<-readsper$State
+ 	sampASVs<-readsper$ASVs
+sta_ven
+ 	names(state)<-rownames(readsper)
+ 	state<-state%>%subset(names(state)%in%rownames(sta_vst_counts))
+
+# 	names(met)<-rownames(readsper)
+ 	names(sampASVs)<-rownames(readsper)
+ 	sta_order<-rownames(sta_vst_counts[names(state),])
+
+
+ 	#Take the Diffentially Abundant Taxa
+ sta_cols
+ #Heat Map Annotations
+	show_col(cols)
+ 	gencol<-list(Genus=c("Dk"=cols[11], "Rz"=cols[13], "Uk"=cols[6],"Gl"=cols[14],"Sg"=cols[15],
+ 		     "Fu"=cols[16]))
+
+ 	stacol<-list(State=c("California"=cols[7], "Florida"=cols[8],
+			      "Both"=sta_cols[2], "No Association"=sta_cols[4]))
+ 	stacol
+				      #column
+
+
+column_ha<-HeatmapAnnotation(
+ 			Genus=gencode[colnames(sta_vst_counts)],col=gencol,
+ 			dds_sig=anno_text(pvalue[colnames(sta_vst_counts)],gp=gpar(fontsize=24)),
+ 		Prevalence=anno_barplot(prevs[colnames(sta_vst_counts)], height=unit(3, 'cm')),
+ 		Association=anno_simple(sta_ven[colnames(sta_vst_counts)], col=sta_cols))
+	table(gencode )
+	show_col(cols)
+	#row
+ 	row_ha<-rowAnnotation(
+ 			State=state[rownames(sta_vst_counts)],col=stacol,
+			ASVs=anno_barplot(sampASVs[rownames(sta_vst_counts)],width=unit(5, 'cm')),
+			annotation_legend_param=list(State=list(labels=c("California",
+									 "Florida"))))
+
+
+
+	#Heat Map
+ 	statemap<-
+ 		Heatmap(sta_vst_counts,name="VST", col=ra_cols,
+ 		rect_gp=gpar(col='white', lwd=1),
+ 		column_names_rot=90,
+ 		row_order=sta_order,
+ 		column_order=rev(names(sort(colMeans(sta_vst_counts)))),
+ 		row_names_gp=gpar(fontsize=8),
+ 		show_row_names=FALSE,
+ 		top_annotation= column_ha,
+ 		right_annotation= row_ha)
+ 		#row_split=rep(letters[1:2],35))
+ 		#ow_split=c(rep("California",36), rep("Florida",34) ))
+
+names(sta_cols)<-c("California", "Both", "Florida", "No Association")
+Vennlgd<-Legend(labels=names(sta_cols)[c(2,4)], title="Association", legend_gp=gpar(fill=sta_cols[c(2,4)]))
+
+ 	png(paste0(g, "StateMapHeat.png"), width=850)
+statemap
+draw(Vennlgd, x=unit(.98, "npc"), y=unit(.21,"npc"), just=c("right", "bottom"))
+ dev.off()
+
+
+#ggsave(paste0(g, "StaHeat.png"), device='png', width=80, units='mm', height = 100, scale=3)
+
+ ```
+ #Management Strategy Super Heat Map
+ ```{r}
+ man_cols<-colorRampPalette(c(cols[9], cols[10]), space='rgb')(3)
+
+ #Heat Map Prep
+
+ #Taxa Dat
+ VTprev<-data.frame(VTPrev=rowSums(otu_table(mangVT)>0),
+ 		    reads_abund=taxa_sums(mangVT),
+ 		    tax_table(mangVT)[,1])
+
+ VTprev<-full_join(VTprev, taxcode)
+
+VtPrev2
+ VtPrev2<-VTprev%>%subset(VTPrev>3)
+ 	VtPrev2$gen<-sapply(strsplit(VtPrev2$CodeName, "_"), '[',1)
+ 	gencode<-VtPrev2[,c("gen")]
+
+	names(gencode)<-VtPrev2$VT
+ 	gencode
+ 	prevs<-VtPrev2$VTPrev
+ 	names(prevs)<-VtPrev2$VT
+ length(prevs)
+
+ head(VTprev)
+
+
+ 	#Mang Heat Map
+ 	man_vst_counts<-psmelt(man_vst)
+ 	matheat<-man_vst_counts[,c("Sample","VT", "Abundance")]
+ 	matheat<-matheat%>%subset(VT %in%VtPrev2$VT)
+ 	matheat<-matheat%>%spread(VT, Abundance)
+ 	head(matheat)
+ 	dim(matheat)
+ 	matheat<-matheat%>%group_by(Sample)%>%summarize_all(sum, na.rm=TRUE)
+ 	matheat<-data.frame(matheat)
+ 	dim(matheat)
+
+ 	rownames(matheat)<-matheat[,1]
+ 	matheat<-matheat[,2:ncol(matheat)]
+ 	man_vst_counts<-matheat
+
+ 	head(man_vst_counts, 1)
+ 	head(sta_vst_counts,1)
+ #Deseq Sig
+ 	pvalue_man<-data.frame(colnames(man_vst_counts)	)
+ 	pvalue_man$p<-ifelse(colnames(man_vst_counts)%in%man_dds_tax$VT, " *", "")
+ 	pvalue<-as.character(pvalue_man$p)
+ 	names(pvalue)<-pvalue_man[,1]
+ 	pvalue
+
+
+ 	#Venn Diagrame with 25% prev and 25 raw Count
+ 	mangeVenn<-data.frame(colnames(man_vst_counts))
+ 	mangeVenn$v<-ifelse(mangeVenn[,1] %in%setdiff(orV, cnV), "Or",
+ 				   	ifelse(mangeVenn[,1] %in%intersect(orV, cnV), "Both",
+ 							  ifelse(mangeVenn[,1] %in%setdiff(cnV, orV),"Cn", "NO")))
+ 	man_ven<-as.character(mangeVenn$v)
+ 	names(man_ven)<-mangeVenn[,1]
+ 	man_cols<-c(man_cols, "grey50")
+ 	names(man_cols)<- c("Or", "Both", "Cn", "NO")
+ #Row Clustering
+ 	mange<-readsper$managment
+ 	sampASVs<-readsper$ASVs
+ 	setdiff(names(mange), rownames(man_vst_counts))
+ 	names(mange)
+ 	rownames(man_vst_counts)
+ 	names(mange)<-rownames(readsper)
+ 		mange<-mange%>%subset(names(mange)%in%rownames(man_vst_counts))
+
+ 	names(sampASVs)<-rownames(readsper)
+ 	sort(mange)
+ 	man_order<-rownames(man_vst_counts[names(sort(mange)),])
+ 	man_order
+
+ #Heat Map Annotations
+
+ 	mancol<-list(Management=c("Organic"=cols[9], "Conventional"=cols[10]))
+ 		#column
+ 	column_ha<-HeatmapAnnotation(
+ 			Genus=gencode[colnames(man_vst_counts)],col=gencol,
+ 			dds_sig=anno_text(pvalue[colnames(man_vst_counts)],gp=gpar(fontsize=24)),
+ 		Prevalence=anno_barplot(prevs[colnames(man_vst_counts)], height=unit(3, 'cm')),
+ 		Association=anno_simple(man_ven[colnames(man_vst_counts)], col=man_cols))
+
+ 	#row
+ 	row_ha<-rowAnnotation(
+ 			Management=mange[rownames(man_vst_counts)],col=mancol,
+ 			ASVs=anno_barplot(sampASVs[rownames(man_vst_counts)],width=unit(5, 'cm')))
+
+
+ 		  mange
+ show_col(man_cols)
+
+ #Heat Map
+ 	h2<-Heatmap(man_vst_counts,name="VST", col=ra_cols,
+ 		rect_gp=gpar(col='white', lwd=1),
+ 		column_names_rot=90,
+ 		row_order=man_order,
+ 		column_order=rev(names(sort(colMeans(man_vst_counts)))),
+ 		row_names_gp=gpar(fontsize=8),
+ 		show_row_names=FALSE,
+ 		top_annotation= column_ha,
+ 		right_annotation= row_ha)
+
+names(man_cols)<-c("Organic", "Both", "Conventional", "No Association")
+VennlgdM<-Legend(labels=names(man_cols)[c(2,4)],
+		 title="Association", legend_gp=gpar(fill=man_cols[c(2,4)]))
+
+
+
+
+
+
+# png(paste0(g, "mangeMapHeat.png"), width=800)
+ draw(h2)
+ draw(VennlgdM, x=unit(.91, "npc"), y=unit(.26,"npc"))
+ dev.off()
+
+```
+
+ #Disease Rating Super Heat Map
+ ```{r}
+dis_cols<-cols[c(2,4,5)]
+show_col(dis_cols)
+ #Heat Map Prep
+
+ #Taxa Dat
+ VTprev<-data.frame(VTPrev=rowSums(otu_table(DRVT)>0),
+ 		    reads_abund=taxa_sums(DRVT),
+ 		    tax_table(DRVT)[,1])
+
+ VTprev<-full_join(VTprev, taxcode)
+
+
+ VtPrev2<-VTprev%>%subset(VTPrev>3)
+ 	VtPrev2$gen<-sapply(strsplit(VtPrev2$CodeName, "_"), '[',1)
+ 	gencode<-VtPrev2[,c("gen")]
+ 	names(gencode)<-VtPrev2$VT
+ 	gencode
+ 	prevs<-VtPrev2$VTPrev
+ 	names(prevs)<-VtPrev2$VT
+ length(prevs)
+
+ head(VTprev)
+
+
+ 	#Mang Heat Map
+ 	dis_vst_counts<-psmelt(dis_vst)
+ 	matheat<-dis_vst_counts[,c("Sample","VT", "Abundance")]
+ 	matheat<-matheat%>%subset(VT %in%VtPrev2$VT)
+ 	matheat<-matheat%>%spread(VT, Abundance)
+ 	head(matheat)
+ 	dim(matheat)
+ 	matheat<-matheat%>%group_by(Sample)%>%summarize_all(sum, na.rm=TRUE)
+ 	matheat<-data.frame(matheat)
+ 	dim(matheat)
+
+ 	rownames(matheat)<-matheat[,1]
+ 	matheat<-matheat[,2:ncol(matheat)]
+ 	dis_vst_counts<-matheat
+
+ 	head(dis_vst_counts, 1)
+ 	head(sta_vst_counts,1)
+ #Deseq Sig
+ 	pvalue_dis<-data.frame(colnames(dis_vst_counts)	)
+	dis_dds_tax$VT
+	pvalue_dis$p<-ifelse(colnames(dis_vst_counts)%in%dis_dds_tax$VT, "*", "")
+ 	pvalue<-as.character(pvalue_dis$p)
+ 	names(pvalue)<-pvalue_dis[,1]
+  	pvalue
+	rownames(dis_dds_tax)<-1:nrow(dis_dds_tax)
+	dis_dds_tax
+	dim(man_dds_tax)
+
+ #Row Clustering
+
+	disra<-readsper$DR3
+
+ 	sampASVs<-readsper$ASVs
+ 	names(disra)<-rownames(readsper)
+ 		disra<-disra%>%subset(names(disra)%in%rownames(dis_vst_counts))
+
+ 	names(sampASVs)<-rownames(readsper)
+ 	sort(disra)
+
+	dis_order<-rownames(dis_vst_counts[names(sort(disra)),])
+ 	dis_order
+
+ #Heat Map Annotations
+ 	sort(unique(disra))
+ 	discol<-cols[c(2,4,5)]
+
+	names(discol)<-sort(unique(disra))
+ 	show_col(discol)
+	discol
+ 	discol<-list(DR=discol)
+	disra
+
+	#column
+ 	column_ha<-HeatmapAnnotation(
+ 			Genus=gencode[colnames(dis_vst_counts)],col=gencol,
+ 			dds_sig=anno_text(pvalue[colnames(dis_vst_counts)],gp=gpar(fontsize=24)),
+ 		Prevalence=anno_barplot(prevs[colnames(dis_vst_counts)], height=unit(3, 'cm')))
+ #		venn=anno_simple(man_ven[colnames(dis_vst_counts)], col=man_cols))
+
+
+ 	#row
+
+disra[rownames(dis_vst_counts)]
+discol
+row_ha<-rowAnnotation(
+ 			DR=disra[rownames(dis_vst_counts)],col=discol,
+ 			ASVs=anno_barplot(sampASVs[rownames(dis_vst_counts)],width=unit(5, 'cm')),
+			annotation_legend_param=list(DR=list(title="HLB Disease \nRating"))
+ 			)
+			#Heat Map
+ 	h3<-Heatmap(dis_vst_counts,name="VST", col=ra_cols,
+ 		rect_gp=gpar(col='white', lwd=1),
+ 		column_names_rot=90,
+ 		row_order=dis_order,
+ 		column_order=rev(names(sort(colMeans(dis_vst_counts)))),
+ 		row_names_gp=gpar(fontsize=8),
+ 		show_row_names=FALSE,
+ 		top_annotation= column_ha,
+ 		right_annotation= row_ha)
+
+
+	rownames(vennDR)<-vennDR[,1]
+	vennDR<-t(vennDR[, 2:ncol(vennDR)])
+	vennDR
+	rownames(vennDR)<-c("Mild", "Moderate", "Severe")
+	vennDR<-vennDR[,colnames(dis_vst_counts)]
+	vennDR<-ifelse(vennDR==1, "Present", "Absent")
+	h4<-Heatmap(vennDR,name="Venn Diagram",
+	 	col=c("white",ra_cols[10]),
+ 		rect_gp=gpar(col='black', lwd=1),
+ 		height= 6,
+		column_names_rot=90,
+ 		cluster_rows=FALSE,
+		column_order=rev(names(sort(colMeans(dis_vst_counts)))),
+ 		row_names_gp=gpar(fontsize=12))
+
+hList<-h3%v%h4
+draw(hList, ht_gap= unit(1.5, "cm"))
+
+     ra_cols
+
+ png(paste0(g, "DisrateMapHeat.png"), width=800)
+ draw(hList, ht_gap=unit(1, "cm"))
+
+ dev.off()
+ rownames(HvS)<-1:nrow(HvS)
+		rownames(MvS)<-1:nrow(HvS)
+		HvS
+		MvS
+```
+
+
+#Figure 3: Beta Diversity
+```{r}
+
+#Bray Curtis NMDS
+sta_vst
+dis_vst
+
+man_vst
+
+
+DRbray<-ordinate(dis_vst, "NMDS", "bray")
+statesbray<-ordinate(sta_vst, "NMDS", "bray")
+mangbray<-ordinate(man_vst, "NMDS", "bray")
+
+show_col(cols)
+#DiseaseRating Beta Diversity
+DRbeta<-plot_ordination(dis_vst, DRbray,color="DR3")+
+	geom_point(size=5)+
+	theme_classic()+
+	geom_vline(xintercept=0, colour='grey70')+
+	geom_hline(yintercept=0, color='grey70')+
+	guides(color=guide_legend(title="HLB Disease \nRating"))+
+	scale_color_manual(values=cols[c(15,4,5)])+
+	scale_size_manual(values=c(3,6))+
+	scale_shape_manual(values=c(1,16),name="Year", labels=c("Year1", "Year2"))+
+	themesizes+
+	annotate(geom="text", x=-0.265, y=.21,
+		 label=as.character(expression("R^{2} == 0.167")),parse=T)+
+		annotate(geom="text", x=-0.27, y=.19, label="P=0.018")
+DRbeta
+show_col(cols)
+#State Beta Diverstiy
+StateBeta<-    
+	plot_ordination(sta_vst, statesbray,color="State")+
+	geom_point(size=5)+
+	theme_classic()+
+	geom_vline(xintercept=0, colour='grey70')+
+	geom_hline(yintercept=0, color='grey70')+
+	scale_color_manual(values=cols[c(7,8)])+
+	annotate(geom="text", x=-.158, y=.21,
+		 label=as.character(expression("R^{2} == 0.176")),parse=T)+
+		annotate(geom="text", x=-.17, y=.195, label="P=0.001")+
+	themesizes
+StateBeta
+#Management Beta
+mangeBeta<-
+	plot_ordination(man_vst, mangbray,color="managment")+   
+	geom_point(size=5)+
+	theme_classic()+
+	geom_vline(xintercept=0, colour='grey70')+
+	geom_hline(yintercept=0, color='grey70')+
+	scale_color_manual(name="Management",values=cols[c(9,10)])+
+	themesizes+
+	annotate(geom="text", x=-.288, y=.42,
+		 label=as.character(expression("R^{2} == 0.145")),parse=T)+
+		annotate(geom="text", x=-.31, y=.39, label="P=0.002")
+mangeBeta
+ggarrange(ggarrange(StateBeta, mangeBeta, labels=c("A", "B"),font.label=list(size=18), ncol=2),
+	 DRbeta, labels=c("","C"),nrow=2, font.label=list(size=18))
+
+
+ggsave(paste0(g, "Fig3_Betadiv.png"), device='png', width=80, units='mm', height = 100, scale=3)
+ggsave(paste0(g, "Fig3_Beta.tiff"), device='tiff', compression="lzw", dpi=600)
+```
+
+#Hypothesis testing: differences in Centroids
+```{r}
+set.seed(1)
+
+#Make Maps
+
+dmap<-data.frame(sample_data(dis_vst))
+smap<-data.frame(sample_data(sta_vst))
+mmap<-data.frame(sample_data(man_vst))
+
+#Bray Distance
+dbray<-phyloseq::distance(dis_vst, method="bray")
+sbray<-phyloseq::distance(sta_vst, method="bray")
+mbray<-phyloseq::distance(man_vst, method="bray")
+
+#Adonis
+set.seed(28)
+adonis(dbray~DR3, data=dmap, method='bray')
+adonis(sbray~State, data=smap, method='bray')
+adonis(mbray~managment, data=mmap, method='bray')
+
+set.seed(52)
+
+#Pairwise Perm Manova
+
+
+pairwise.perm.manova(dbray, dmap$DR3)
+pairwise.perm.manova(sbray, smap$State)
+pairwise.perm.manova(mbray, mmap$managment)
+
+betadr<-betadisper(dbray, dmap$DR3)
+betast<-betadisper(sbray, smap$State)
+betama<-betadisper(mbray, mmap$managment)
+
+anova(betadr)
+anova(betast)
+anova(betama)
+betama
+```
+
+#Figure 4: Tissue Venn Diagram
+
+```{r}
+myplot<-function(mydata,x,y){
+ggdotchart(sta3, x="VT", y="prev")
+t_prev<-ggbarplot(mydata,x="VT", y='prev', color='color',group='colpat',
+
+	add.params= list(color='color',size=2))+
+	theme(strip.background=element_blank(),
+	strip.text.x=element_blank())+
+        rotate_x_text(45, vjust=1)+
+	labs(x=' ', y='Relative Abundance (%)')+
+	scale_y_continuous(labels=function(x) x*100)+
+	scale_color_identity()+
+	theme(axis.text.x=element_text(angle=90, hjust=1,vjust=.45, size=12),
+        axis.text.y=element_text(size=8),axis.title.y=element_text(size=10),
+        legend.position='none', plot.margin=margin(0,2,2,0,"mm"))
+
+
+
+high
+mydata3<-mydata%>%subset(fac!="High")
+	low<-
+ggdotchart(mydata3,x="VT", y=y, color='color',group='colpat',
+	dot.size=7,add="segments",
+	label=round((mydata3[,y]*100),0),
+	font.label=list(color="white", size=7, vjust=0.5),
+	add.params= list(color='color',size=2))+
+	theme(strip.background=element_blank(),
+	strip.text.x=element_blank())+
+        rotate_x_text(45, vjust=1)+
+	labs(x=' ', y='')+
+	scale_y_continuous(labels=function(x) x*100)+
+	scale_color_identity()+
+ 	theme(axis.text.x=element_text(angle=90, hjust=1,vjust=.45, size=12),
+	axis.text.y=element_text(size=8),axis.title.y=element_text(size=10),
+	legend.position='none', plot.margin=margin(0,2,2,0,"mm"))
+
+
+
+plot<-grid.arrange(arrangeGrob(high, low, widths=c(widths1,widths2)))
+}
+
+```
+
+#For Venn Diagram Agglomerate to VT level then transform Rel abund
+
+#Disease Rating UpsetR Graph
+```{r}
+sample_sums(diseaserav)
+subset_samples(diseaserav, taxa_sums(diseaserav)>0)
+DR_VD<-psmelt(diseaserav)
+unique(DR_VD$CodeName)
+
+
+#Add Presence And Abscence
+	combo<-DR_VD
+
+
+	combo$pres<-ifelse(combo$Abundance>0,1,0)
+	print(sum(combo$pres))
+        print(sum(combo$Abundance))
+	diseaserav
+sta<-combo%>%group_by(CodeName, DiseaseRating)%>%
+	summarize(counts=n(), prev=sum(pres)/n()*100, bin=ifelse(prev>10,1,0),
+	incidence=sum(pres), abund=mean(Abundance))
+
+
+sta2<-sta%>%spread(DiseaseRating, bin)
+vts<-sta2$CodeName
+
+
+sta2<-sta2%>%mutate(`1`=replace_na(`1`, 0), `2`=replace_na(`2`, 0),
+        `3`=replace_na(`3`, 0), `4`=replace_na(`4`,0),`5`=replace_na(`5`, 0))
+head(sta2)
+range(sta2$prev)
+diseaserav
+sta2<-sta2%>%dplyr::group_by(CodeName)%>%dplyr::summarize(counts=sum(counts),
+        DR1=sum(`1`),DR2=sum(`2`), DR3=sum(`3`),DR4=sum(`4`),DR5=sum(`5`),
+		 RA=mean(abund),
+                prev=sum(incidence),
+		colpat=sum(ifelse(DR1>0,1,0),ifelse(DR2>0,2,0),
+                 ifelse(DR3>0,5,0), ifelse(DR4>0,10,0),ifelse(DR5>0,20,0)))
+
+
+sta2$inc<-(sta2$prev/sta2$counts)
+
+sta3<-sta2%>%subset(colpat>0)
+
+sta3<-sta3%>%subset(RA>=.01)
+dim(sta3)
+dim(sta2)
+sta3$fac<-ifelse(sta3$RA>.08, "High", "Low")
+table(sta3$fac)
+table(sta3$colpat)
+unique(sta3$CodeName)
+sta3<-data.frame(sta3)
+
+
+ppi<-600
+
+
+upsetpal<-c(pal_aaas('default', alpha=.8)(10), pal_rickandmorty('schwifty')(10))
+show_col(upsetpal)
+head(sta2)
+
+
+#tiff(paste0(g, "venn_EndoTis.tiff"),width=6.6*ppi, height=6.6*ppi, res=ppi)
+
+
+colnames(sta3)[8]<-"RelativeAbundance"
+
+#At ASV Level
+widths1=1.5
+widths2=2.5
+colnames(sta3)
+head(fromList(sta3))
+#png(paste0(g, "DiseaseRatingVennDiagram.png"))
+
+
+
+
+sets<-names(sta3[3:7])
+metadata<-data.frame(cbind(sets, as.numeric(as.character(table(sample_data(DR)[,"DiseaseRating"])))))
+names(metadata)<-c("Sets", "NGroup")
+metadata$NGroup<-as.numeric(as.character(metadata$NGroup))
+
+
+
+## Now make the plot
+mydata=sta3
+x="VT"
+y="prev"
+color="black"
+plot1<-function(mydata,x, y){
+	ggdotchart(mydata,x="VT", y=y, color='color',group='colpat',
+	dot.size=4,add="segments",
+
+
+	add.params= list(color='color',size=2))+
+	theme(strip.background=element_blank(),
+	strip.text.x=element_blank())+
+	labs(x=' ', y='Prevalence')+
+	scale_color_identity()+
+ 	theme(axis.text.x=element_text(angle=90, hjust=1,vjust=.45, size=10),
+	axis.text.y=element_text(size=8),axis.title.y=element_text(size=10),
+	legend.position='none', plot.margin=margin(0,2,2,0,"mm"))
+
+}
+
+
+#	VT_prv<-
+#		ggplot(data=mydata,aes_string(x=x, y=y, colour='color'))+geom_bar(stat='identity')+
+#
+#		labs(x="", y="Prevalence")+themesizes+scale_fill_identity()+
+#		theme(axis.text.x=element_text(size=10, angle=45))
+#
+#		}
+
+
+
+colnames(sta3)
+mydata=sta3
+
+x='prev'
+y='RelativeAbundance'
+head(mydata)
+table(mydata$colpat)
+class(mydata$colpat)
+mydata%>%subset(colpat=='20')
+
+hardcols<-1:length(mydata$colpat)
+for (i in 1:length(mydata$colpat)){
+	print(mydata$colpat[i])
+	if (mydata$colpat[i]==1 ){
+		hardcols[i]=cols[17]
+
+	}else if (mydata$colpat[i]==2 ){
+		hardcols[i]=cols[15]
+
+	}else if (mydata$colpat[i]==8 ){
+		hardcols[i]=cols[18]
+
+	}else if (mydata$colpat[i]==10 ){
+		hardcols[i]=cols[11]
+
+	} else if (mydata$colpat[i]==11 ){
+		hardcols[i]=upsetpal[9]
+
+	}else if (mydata$colpat[i]==16){
+		hardcols[i]=upsetpal[10]
+
+	} else if (mydata$colpat[i]==20| mydata$colpat[i]==30 ){
+		hardcols[i]=cols[9]
+
+	}else if (mydata$colpat[i]==28 | mydata$colpat[i]==38 ){
+		hardcols[i]=upsetpal[4]
+
+	} else {
+		hardcols[i]=cols[10]}
+	print(hardcols[i])
+}
+
+show_col(upsetpal)
+show_col(cols)
+table(mydata$hardcols, mydata$colpat)
+class(hardcols)
+mydata$hardcols<-hardcols
+sta3$hardcols<-hardcols
+#plot2<-function(mydata,x, y){
+ 	scatters<-
+		ggplot(data=mydata,aes_string(x=x, y=y))+geom_point(size=3, aes(colour=hardcols))+themesizes+theme_classic()+
+			labs(x="Prevalence", y="Relative Abundance")+scale_y_continuous(labels=scales::percent_format(accuracy=1))+
+			scale_color_identity()+themesizes+
+		theme(axis.text.x=element_text(angle=0), legend.position='bottom')+
+		geom_label_repel(aes(label=CodeName, colour=hardcols))+ylim(0,
+#		facet_zoom(ylim=c(0,.05),zoom.data=ifelse(RelativeAbundance<=.05, NA, FALSE))
+#}
+themesizes
+
+ggsave(paste0(g, "UpsetGraphB.png"),units='mm', width=100,height=100, dpi=600, scale=1)
+scatters
+
+#attributeplots <- list(gridrows = 100,
+ #                 plots = list(list(plot = plot2, x = "prev", y = "RelativeAbundance", queries = TRUE)))
+
+
+show_col(upsetpal)
+#png('drupsetr_11.11.2020.png')
+
+
+class(metadata$NGroup)
+table(sta3$hardcols, sta3$colpat)
+sta3
+
+upset(sta3,sets=c("DR5", "DR4", "DR3", "DR2", "DR1"),keep.order=TRUE,
+      order.by='freq',point.size=4,text.scale=(c(2.0,2.0,1.5,1.5,2,2.0)),
+      set.metadata = list(data = metadata, plots = list(list(type = "hist",
+    column = "NGroup", colors=cols[seq(9,18,2)],assign = 20))),
+
+
+
+
+
+
+#      attribute.plots=attributeplots,
+        queries = list(
+		list(query = intersects, params = list("DR1"), color = cols[17], active = T),
+#        	list(query = intersects, params = list("DR2"), color = cols[15], active = T),
+#        	list(query = intersects, params = list("DR4"), color = cols[11], active = T),
+        	list(query = intersects, params = list("DR5"), color = cols[9], active = T),
+
+#		list(query = intersects, params = list("DR1",  "DR4"),color = upsetpal[9], active = T),
+#		list(query = intersects, params = list("DR5",  "DR4"),color = cols[10], active = T),
+
+	        list(query = intersects, params = list("DR1", "DR2", "DR3"), color = cols[18], active = T),
+	        list(query = intersects, params = list("DR1", "DR3", "DR4"), color = upsetpal[10], active = T),
+	        list(query = intersects, params = list("DR1", "DR2", "DR3", "DR5"), color = upsetpal[4], active = T),
+	        list(query = intersects, params = list("DR1", "DR2", "DR3","DR4","DR5"), color = upsetpal[4], active = T)))
+
+#dev.off()
+
+head(sta3)
+```
+
+#Differential Abundance (Deseq2)
+
+
+
+```{r}
+
+vtpal2<-c(vtpal,vtpal,"#000000")
+length(vtpal2)
+plot_bar(amf3, fill="VT" )+scale_fill_manual(values=vtpal2)+theme_classic()+
+		facet_grid(managment+DiseaseRating~State, scale="free_x", drop=TRUE)
+
+amf3
+#Define Groups
+#Run Deseq
+
+ 	gm_mean = function(x, na.rm=TRUE){
+		  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))}
+
+
+deseq2fun<-function(diagdds,group,thresh, ps){
+
+		geoMeans = apply(counts(diagdds), 1, gm_mean)
+		diagdds = estimateSizeFactors(diagdds, geoMeans = geoMeans)
+		diagdds = DESeq(diagdds, fitType="local")
+		keeptit<<-diagdds
+
+}
+
+```
+
+
+```{r}
+#States
+	#statesG<-tax_glom(states, "Order")
+
+	#ab_deseq=phyloseq_to_deseq2(statesG, ~State)
+	#deseq2fun(ab_deseq, "states", 0.01, statesG)
+
+	#State_resG<-keeptit
+ 	statesV<-states
+	mangV<-mang
+mangV
+	tax_table(statesV)<-tax_table(statesV)[,c("Superkingdom","CodeName")]
+   tax_table(mangV)<-tax_table(mangV)[,c("Superkingdom","CodeName")]
+
+
+#	statesV<-tax_glom(statesV, "CodeName")
+
+	ab_deseq=phyloseq_to_deseq2(statesV, ~State)
+
+   deseq2fun(ab_deseq, "states", 0.01, statesV)
+
+	State_resV<-keeptit
+
+   #Management
+	#mangG<-tax_glom(mang, "Order")
+
+	#ab_deseq=phyloseq_to_deseq2(mangG, ~managment)
+	#deseq2fun(ab_deseq, "managment", 0.01, mangG)
+
+	#mange_resG<-keeptit
+	#mangV<-tax_glom(mangV, "CodeName")
+	mangV
+	ab_deseq=phyloseq_to_deseq2(mangV, ~managment)
+	deseq2fun(ab_deseq, "managment", 0.01, mang)
+
+	mange_resV<-keeptit
+
+
+#Deseq2 Virtual Taxa Management Level
+
+ds_results<- mange_resV
+ps_obj<- mangV
+groupQ<-"managment"
+
+       st_DS2<-data.frame(results(ds_results,
+                name=resultsNames(ds_results)[2]))
+
+        st_DS3<-cbind(as(st_DS2, "data.frame"),
+                as(tax_table(ps_obj)[rownames(st_DS2), ], "matrix"))
+
+        st_DS3<-st_DS3%>%subset(padj<0.01)
+
+        AB_deseq3<-st_DS3%>%subset(log2FoldChange >1 | log2FoldChange< -1)
+        print(dim(st_DS3))
+        print(dim(AB_deseq3))
+
+colnames(AB_deseq3)
+hist(AB_deseq3$log2FoldChange)
+sort(unique(as.character(AB_deseq3$CodeName)))
+AB_deseq3$seqname<-make.unique(as.character(AB_deseq3$CodeName))
+print(AB_deseq3$seqname)
+#write.csv(st_DS3, paste0(g, "mangementVT_deseq2.csv"))
+                        #Merge By Group
+         ab<-merge_samples(ps_obj, groupQ)
+        ab<-transform_sample_counts(ab, function(x) (x/sum(x)*100))
+        print(sample_sums(ab))
+                #Remove Low RA
+       ab<-subset_taxa(ab, taxa_sums(ab)>1)
+       ab
+
+ #Melt Phyloseq
+        abb<-psmelt(ab)
+
+        colnames(abb)[1]<-"ASVs"
+        abb<-abb%>%
+                group_by(ASVs, CodeName, Sample)%>%
+        summarize(Abundance=mean(Abundance))%>%spread("Sample", "Abundance")
+        print(colnames(abb))
+
+                #Subset Based on Genera from Deseq2
+        AB_deseq3$ASVs<-rownames(AB_deseq3)
+        abhm<-abb%>%subset(ASVs%in%AB_deseq3$ASVs)
+
+        print(dim(abhm))
+	abhm
+	print(dim(AB_deseq3))
+
+
+        abra_l2f<-inner_join(abhm, AB_deseq3)
+
+        print(dim(abra_l2f))
+        abra_l2f<<-abra_l2f%>%arrange(log2FoldChange)
+
+abra_l2f$seqname<-make.unique(as.character(abra_l2f$CodeName))
+abra_l2f$label<-ifelse(abra_l2f$log2FoldChange>0, "Organic", "Conventional")
+abra_l2f$RA<-round(pmax(abra_l2f$Organic, abra_l2f$Conventional),0)
+abra_l2f$RA
+
+
+print(abra_l2f$seqname)
+print(abra_l2f, n=21)
+
+sigtab<-abra_l2f
+sigtab[,c(2:12)]
+opA<-ggplot(sigtab, aes(x=CodeName, y=log2FoldChange, color=label)) + geom_point(aes(size=RA)) +
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))+theme_classic()+
+  scale_color_manual(values=cols[c(2,5)])+labs(x='')+geom_hline(yintercept=0, size=1)
+
+opB<-ggbarplot(sigtab, x="seqname", y="log2FoldChange", fill="label", position=position_dodge(0.9)) + geom_point(aes(size=RA), shape=2) +
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))+theme_classic()+
+  scale_fill_manual(values=cols[c(2,5)])+labs(x='')+geom_hline(yintercept=0, size=1)+coord_flip()
+
+ggarrange(opA, opB, nrow=2)
+
+#hmMV<-data.frame(abra_l2f)
+#rownames(hmMV)<-hmMV$seqname
+ #       colnames(hmMV)
+#	logabund<-hmMV[,c("Conventional","Organic","log2FoldChange")]
+   #    logabund<-as.matrix(logabund)
+  #       head(logabund)
+ #       summary(logabund)
+
+#colnames(hmMV)
+
+
+#lwfc_hm<-Heatmap(logabund[,3], col=colorRamp2(c(-3, 0, 30), c(cols[20],'grey90',cols[8])),
+#		 name="L2FC", show_column_dend=FALSE, show_row_dend=FALSE,
+#		 width=unit(.25, 'cm'), height=unit(10, 'cm'),cluster_rows=FALSE,
+#		 cluster_columns=FALSE, row_names_side="left",
+ #               row_names_gp=gpar(fontsize=12), column_names_gp=gpar(fontsize=12))
+#show_col(cols)
+#draw(lwfc_hm)
+#heatmapcols<-viridis_pal()(6)
+#show_col(heatmapcols)
+#lhm<-Heatmap(logabund[,1:2], col=colorRamp2(c(0,1,2.5,5,10,20, 30),
+#	c("black",heatmapcols[1:6])),
+#	 name="Relative\nAbundance\n",
+ #       show_column_dend=FALSE, show_row_dend=FALSE,
+#	 width=unit(1, 'cm'),height=unit(10,'cm'),cluster_rows=FALSE,
+ #               column_order=c("Conventional", "Organic"),
+#	 cluster_columns=FALSE, row_names_side="left",
+#                row_names_gp=gpar(fontsize=12), column_names_gp=gpar(fontsize=12))
+#AB_HM<-lhm+lwfc_hm
+#draw(AB_HM, gap=unit(0, 'mm'))
+
+
+#png(paste0(g, "Managment_VT.png"))
+#draw(AB_HM, gap=unit(0, 'mm'))
+#dev.off()
+
+#States Virtual Taxa Level Heatmap
+
+ds_results<- State_resV
+ps_obj<- statesV
+groupQ<-"State"
+ps_obj
+       st_DS2<-data.frame(results(ds_results,
+                name=resultsNames(ds_results)[2]))
+
+        st_DS3<-cbind(as(st_DS2, "data.frame"),
+                as(tax_table(ps_obj)[rownames(st_DS2), ], "matrix"))
+
+        st_DS3<-st_DS3%>%subset(padj<0.01)
+
+        AB_deseq3<-st_DS3%>%subset(log2FoldChange >1 | log2FoldChange< -1)
+        print(dim(st_DS3))
+        print(dim(AB_deseq3))
+
+
+                        #Merge By Group
+        ab<-merge_samples(ps_obj, groupQ)
+        ab<-transform_sample_counts(ab, function(x) (x/sum(x)*100))
+        print(sample_sums(ab))
+                #Remove Low RA
+        ab<-subset_taxa(ab, taxa_sums(ab)>1)
+                #Melt Phyloseq
+        abb<-psmelt(ab)
+
+        colnames(abb)[1]<-"ASVs"
+        abb<-abb%>%
+                group_by(ASVs, CodeName, Sample)%>%
+        summarize(Abundance=mean(Abundance))%>%spread("Sample", "Abundance")
+        print(colnames(abb))
+
+                #Subset Based on Genera from Deseq2
+        AB_deseq3$ASVs<-rownames(AB_deseq3)
+        abhm<-abb%>%subset(ASVs%in%AB_deseq3$ASVs)
+
+        print(dim(abhm))
+        print(dim(AB_deseq3))
+
+
+        abra_l2f<-inner_join(abhm, AB_deseq3)
+
+        print(dim(abra_l2f))
+        abra_l2f<<-abra_l2f%>%arrange(log2FoldChange)
+abra_l2f$seqname<-make.unique(as.character(abra_l2f$CodeName))
+print(abra_l2f$seqname)
+
+abra_l2f$seqname<-make.unique(as.character(abra_l2f$CodeName))
+abra_l2f
+abra_l2f$label<-ifelse(abra_l2f$log2FoldChange>0, "Florida", "California")
+abra_l2f$RA<-round(pmax(abra_l2f$Florida, abra_l2f$California),0)
+abra_l2f$RA
+
+
+print(abra_l2f$seqname)
+print(abra_l2f, n=21)
+
+sigtab<-abra_l2f
+sigtab[,c(2:12)]
+opA<-ggplot(sigtab, aes(x=CodeName, y=log2FoldChange, color=label)) + geom_point(aes(size=RA)) +
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))+theme_classic()+
+  scale_color_manual(values=cols[c(6,8)])+labs(x='')+geom_hline(yintercept=0, size=1)
+
+opB<-ggbarplot(sigtab, x="seqname", y="log2FoldChange", fill="label", position=position_dodge(0.9)) + geom_point(aes(size=RA), shape=2) +
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))+theme_classic()+
+  scale_fill_manual(values=cols[c(6,8)])+labs(x='')+geom_hline(yintercept=0, size=1)+coord_flip()
+
+ggarrange(opA, opB, nrow=2)
+
+
+
+
+hmSV<-data.frame(abra_l2f)
+rownames(hmSV)<-hmSV$seqname
+       colnames(hmSV)
+	logabund<-hmSV[,c("California","Florida","log2FoldChange")]
+      logabund<-as.matrix(logabund)
+	dr3$lab<-paste0("DR3")
+	dr4$lab<-paste0("DR4")
+dr5$lab<-paste0("DR5")
+
+
+	dim(dr1)
+	dim(dr2)
+	dim(dr3)
+	dim(dr4)
+	dim(dr5)
+	avjoin<-rbind(dr1, dr2, dr3, dr4, dr5)
+colnames(avjoin)
+#
+	avjoin_sig<-subset(avjoin, padj<0.01)
+#
+	print(dim(avjoin_sig))
+
+	avjoin_sig3<-subset(avjoin_sig, log2FoldChange>1 | log2FoldChange< (-1))
+
+
+	dim(avjoin_sig3)
+	head(avjoin_sig3)
+ggplot(avjoin_sig3, aes(x=log2FoldChange, y=CodeName, color=lab))+
+		geom_vline(xintercept=0.0, color="#bababa", size=0.5)+
+		geom_point(size=6)+ggtitle("DR")+
+			theme(plot.title=element_text(hjust=0.5),axis.text.y=element_text(size=18))
+	ggsave(paste0(g, "DR_deseq_Vplot", ".png"))
+
+#	write.csv(avjoin_sig, paste0(g,"Bac_gen_glom_deseq_tissues", ".csv"))
+	#avjoin_sig3<-read.csv("graphs/Bac_gen_glom_deseq_tissues.csv")
+
+
+
+```
+#Deseq2 Heat Map
+```{r}
+dim(avjoin_sig3)
+
+#Combine Bac and Fun
+
+head(abfb)
+colnames(combo)[1]<-"ASVs"
+
+abfb<-combo%>%group_by(CodeName,DiseaseRating)%>%
+	summarize(Abundance=mean(Abundance)*100)%>%spread("DiseaseRating", "Abundance")
+
+
+abhm<-abfb%>%subset(CodeName%in%avjoin_sig3$CodeName)
+dim(abhm)
+dim(abfb)
+
+
+colnames(abhm)
+abhm$sums<-rowSums(abhm[,c(2:6)])
+abra_l2f<-inner_join(abhm, avjoin_sig3)
+
+hm4<-data.frame(abhm)
+
+        rownames(hm4)<-hm4$CodeName
+        colnames(hm4)
+        logabund<-hm4[,c(2:6)]
+ logabund<-as.matrix(logabund)
+         head(logabund)
+        summary(logabund)
+
+colnames(hm4)
+
+
+
+
+colnames(logabund)<-c("DR1", "DR2", "DR3", "DR4", "DR5")
+
+lhm<-Heatmap(logabund[,1:5], col=colorRamp2(c(0,1,5,10,20,30,40),
+		c("black",heatmapcols[1:6])), name="Rel.\nAbundance",
+        show_column_dend=FALSE, show_row_dend=FALSE, width=unit(3, 'cm'),height=unit(10,'cm'),
+			cluster_rows=FALSE,
+                column_order=c("DR1", "DR2", "DR3", "DR4", "DR5"),
+		cluster_columns=FALSE, row_names_side="left",
+                row_names_gp=gpar(fontsize=12), column_names_gp=gpar(fontsize=12))
+
+draw(lhm)
+tiff(paste0(g, "DR_DeseqHeatMap.tiff"),width=6.6*ppi, height=6.6*ppi, res=ppi)
+draw(lhm)
+dev.off()
+
+
+```
+
+```{r}
+sessionInfo()
+
+```
