@@ -1,4 +1,4 @@
-2019-2020
+2019-2022
 
 This project investigates the Arbuscular mycorrhizal fungal community associated with citrus orchards in both California and Florida during the HLB outbreak. 
 
